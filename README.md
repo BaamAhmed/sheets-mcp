@@ -46,6 +46,9 @@ export GOOGLE_SERVICE_ACCOUNT_KEY='{"type":"service_account",...}'
 export GOOGLE_CLIENT_EMAIL="your-service-account@project.iam.gserviceaccount.com"
 export GOOGLE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n..."
 
+# Optional: Set Redis URL for production (not needed for local dev)
+# export REDIS_URL="redis://localhost:6379"
+
 # Run development server
 npm run dev
 ```
@@ -68,6 +71,8 @@ The MCP endpoint will be available at `http://localhost:3000/api/mcp`
 
 ### Environment Variables
 
+#### Required - Authentication
+
 Set one of the following authentication methods:
 
 | Variable | Description |
@@ -75,7 +80,13 @@ Set one of the following authentication methods:
 | `CREDENTIALS_CONFIG` | Base64-encoded service account JSON (recommended for Vercel) |
 | `GOOGLE_SERVICE_ACCOUNT_KEY` | Direct JSON string of service account credentials |
 | `GOOGLE_CLIENT_EMAIL` + `GOOGLE_PRIVATE_KEY` | Individual service account fields |
-| `DRIVE_FOLDER_ID` | Default Google Drive folder ID (optional) |
+
+#### Optional
+
+| Variable | Description |
+|:---------|:------------|
+| `DRIVE_FOLDER_ID` | Default Google Drive folder ID |
+| `REDIS_URL` | Redis connection URL for production pub/sub (e.g., `redis://localhost:6379`). Not required for local development. |
 
 ### Setting up Google Cloud Credentials
 
@@ -247,6 +258,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🙏 Credits
 
-- Built with [Vercel MCP Adapter](https://vercel.com/docs/mcp)
+- Built with [mcp-handler](https://github.com/vercel/mcp-handler)
 - Uses [googleapis](https://www.npmjs.com/package/googleapis) for Google API integration
 - Inspired by [kazz187/mcp-google-spreadsheet](https://github.com/kazz187/mcp-google-spreadsheet)
