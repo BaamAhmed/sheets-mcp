@@ -1,45 +1,55 @@
-FROM alpine:latest AS base
+# Use Node.js Alpine for small image size
+FROM node:20-alpine AS base
 
 WORKDIR /app
-# Set environment variables for non-interactive installs and minimal locale
-ENV LANG=C.UTF-8
 
-# Update and install basic packages for a low resource machine
-RUN apk update && \
-    apk upgrade && \
-    apk add --no-cache \
-        bash \
-        curl \
-        tini \
-        curl \
-        coreutils \
-        git
+# Install dependencies only when needed
+FROM base AS deps
+# Add libc6-compat for Alpine
+RUN apk add --no-cache libc6-compat
 
-# Set tini as the init system to handle PID 1
-ENTRYPOINT ["/sbin/tini", "--"]
+COPY package.json package-lock.json* ./
+RUN npm ci
 
-RUN curl -LsSf https://astral.sh/uv/install.sh | sh
-
-# Ensure uv is on PATH (installer places it in /root/.local/bin for root)
-ENV PATH="/root/.local/bin:${PATH}"
-
-COPY .python-version .
-
-RUN uv venv
-
+# Build the application
 FROM base AS builder
-
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-RUN uv sync
+# Set production environment
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
 
-# Build the project (produces dist/*.whl)
-RUN uv build
+RUN npm run build
 
+# Production image
 FROM base AS runner
+WORKDIR /app
 
-COPY --from=builder /app/dist/*.whl /app/
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
 
-RUN uv pip install /app/*.whl
+# Create non-root user for security
+RUN addgroup --system --gid 1001 nodejs
+RUN adduser --system --uid 1001 nextjs
 
-CMD ["uv", "run", "mcp-google-sheets", "--transport", "sse"]
+# Copy built assets
+COPY --from=builder /app/public ./public
+
+# Set correct permissions for prerender cache
+RUN mkdir .next
+RUN chown nextjs:nodejs .next
+
+# Copy standalone build
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+
+USER nextjs
+
+EXPOSE 3000
+
+ENV PORT=3000
+ENV HOSTNAME="0.0.0.0"
+
+CMD ["node", "server.js"]
